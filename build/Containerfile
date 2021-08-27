@@ -1,0 +1,22 @@
+FROM registry.access.redhat.com/ubi8/go-toolset:1.15.14-3 as builder
+ENV GOPATH=/go/ \
+    GO111MODULE=on
+
+USER root
+
+WORKDIR /kube-svcauth-proxy
+COPY go.mod .
+# COPY go.sum .
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build \
+  -a -o _output/kube-svcauth-proxy \
+  -gcflags all=-trimpath=/ \
+  -asmflags all=-trimpath=/ \
+  main.go
+
+FROM scratch
+COPY --from=builder /kube-svcauth-proxy/_output/kube-svcauth-proxy /
+
+ENTRYPOINT ["/kube-svcauth-proxy"]
