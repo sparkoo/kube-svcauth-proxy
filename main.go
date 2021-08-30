@@ -28,7 +28,10 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		go runServer(server, wg)
+		go runServer(server, func() {
+			log.Printf("Shutting down server '%s'... \n", pc.Listen)
+			wg.Done()
+		})
 		wg.Add(1)
 	}
 
@@ -59,13 +62,10 @@ func readConfFile(filename string) (*ProxyConf, error) {
 	return conf, nil
 }
 
-func runServer(server *http.Server, wg *sync.WaitGroup) {
+func runServer(server *http.Server, onShutdown func()) {
 	log.Printf("Starting server '%s' ...\n", server.Addr)
 
-	server.RegisterOnShutdown(func() {
-		log.Printf("Shutting down server '%s'... \n", server.Addr)
-		wg.Done()
-	})
+	server.RegisterOnShutdown(onShutdown)
 
 	log.Println("Proxy.run()", server.ListenAndServe())
 }
