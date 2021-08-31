@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"kube-svcauth-proxy/proxy"
 	"log"
-	"net/http"
 	"sync"
 )
 
@@ -28,10 +27,16 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		go runServer(server, func() {
-			log.Printf("Shutting down server '%s'... \n", pc.Listen)
-			wg.Done()
-		})
+
+		go func() {
+			log.Printf("Starting server '%s' ...\n", server.Addr)
+			server.RegisterOnShutdown(func() {
+				log.Printf("Shutting down server '%s'... \n", pc.Listen)
+				wg.Done()
+			})
+			log.Println("Proxy.run()", server.ListenAndServe())
+		}()
+
 		wg.Add(1)
 	}
 
@@ -60,12 +65,4 @@ func readConfFile(filename string) (*ProxyConf, error) {
 	}
 
 	return conf, nil
-}
-
-func runServer(server *http.Server, onShutdown func()) {
-	log.Printf("Starting server '%s' ...\n", server.Addr)
-
-	server.RegisterOnShutdown(onShutdown)
-
-	log.Println("Proxy.run()", server.ListenAndServe())
 }
